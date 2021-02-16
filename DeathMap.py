@@ -18,7 +18,7 @@ Cam1Pict = DirtRoom + "Cam1.jpg"
 Cam2Pict = DirtRoom + "Cam2.jpg"
 Cam1Res = DirtRoom + "Cam1.txt"
 Cam2Res = DirtRoom + "Cam2.txt"
-windowName = 'Result'
+windowName = 'Results'
 # Rofl = MyDirectory + "Dungeon.jpg"
 # ResultPict, windowName = Rofl, Rofl[Rofl.rfind('/') + 1:Rofl.rfind('.')]
 
@@ -175,14 +175,16 @@ if __name__ == "__main__":
         if i > width - 30:
             break
         cv2.line(img, (polew + i, height + 6), (polew + i, height - 6), Black, 2)
-        cv2.putText(img, (str)(i / 100), (i + polew, (int)(height + poleh / 2)), font, fontScale, Black, 2)
+        cv2.putText(img, (str)(i), (i + polew, (int)(height + poleh / 2)), font, fontScale, Black, 2)
 
     for i in range(0, len(v), 2):
         # Line
         x1 = v[i][2] + v[i][4] / 2
         x2 = v[i + 1][2] + v[i + 1][4] / 2
-       # print(x1, x2)
-        m = (int)((focus * rcam) / abs(x1 - x2))
+        dx12 = abs(x1 - x2)
+        if dx12 == 0:
+            dx12 = 1
+        m = (int)((focus * rcam) / dx12)
 
         first = (int)((v[i][2] + v[i + 1][2]) / 2)
         second =(int)((v[i][2] + v[i + 1][2] + v[i][4] + v[i + 1][4]) / 2)
@@ -197,7 +199,10 @@ if __name__ == "__main__":
         name = v[i][0] + " " + (str)((v[i][1]+v[i+1][1])/2)+ "% "
         x1 = v[i][2] + v[i][4] / 2
         x2 = v[i + 1][2] + v[i + 1][4] / 2
-        m = (int)((focus * rcam) / abs(x1 - x2))
+        dx12 = abs(x1 - x2)
+        if dx12 == 0:
+            dx12 = 1
+        m = (int)((focus * rcam) / dx12)
         first = (int)((v[i][2] + v[i + 1][2]) / 2)
 
         Dheight = height - int(m)
@@ -206,7 +211,7 @@ if __name__ == "__main__":
 
     ColorOfArrow = Red
     cv2.putText(img, 'y(m)', (0, 20), 2, 1, ColorOfArrow, 2)
-    cv2.putText(img, 'x(m)', (width - polew, poleh + height - 3), 2, 1, ColorOfArrow, 2)
+    cv2.putText(img, 'x(p)', (width - polew, poleh + height - 3), 2, 1, ColorOfArrow, 2)
 
     while (True):
         cv2.imshow(windowName, img)
