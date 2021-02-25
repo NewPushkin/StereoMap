@@ -4,28 +4,39 @@ import numpy
 import subprocess
 from subprocess import call
 
-# cv2.putText(img, str(a[i]), (int(a[i + 2]), int(a[i + 1])), cv2.FONT_HERSHEY_SIMPLEX, 0.1, (255, 0, 255), 2)
-# cv2.line(img, (0, 0), (200, 200), (255, 255, 255), 10)
-# cv2.rectangle(img, (0, 0), (50, 50), (255, 0, 0), -1)
-MyDirectory = "C:/Project/"
-DirtRoom = MyDirectory + "Stereopair/Data/"
+# Camera Angle [Degrees] --> [Radians]
+CamAngle = 120
+CamAngle = CamAngle / 360 * math.pi
+# CameraDistanse [millimeters] --> [meters]
+CamDist = 20
+CamDist = CamDist / 1000
+# FocusDistance [millimeters] --> [meters]
+FocusDist = 70
+FocusDist = FocusDist / 1000
+# Pixel Horizontal Resolution [pixels]
+PxHor = 768
+# Scale [meters --> pixel]
+ScaleLen = 200
+# Accuracy of detecting
+Accuracy = 40
+# PreCalculate
+LenTmp = CamDist * PxHor / math.tan(CamAngle)
 
-WhiteRect = cv2.imread(DirtRoom + "WhiteRectangle.jpg")
-DoublePict = cv2.imread(MyDirectory + "Stereopair/Stereopair.jpg")
+MyDirectory = "C:/Project/"
+DirtRoom = MyDirectory + "Stereopair/" 
+
+WhiteRect = cv2.imread(DirtRoom + "Data/WhiteRectangle.jpg")
+DoublePict = cv2.imread(DirtRoom + "Stereopair.jpg")
 
 ResultPict = MyDirectory + "Results.jpg"
-Cam1Pict = DirtRoom + "Cam1.jpg"
-Cam2Pict = DirtRoom + "Cam2.jpg"
-Cam1Res = DirtRoom + "Cam1.txt"
-Cam2Res = DirtRoom + "Cam2.txt"
-windowName = 'Results'
+Cam1Pict = DirtRoom + "Data/Cam1.jpg"
+Cam2Pict = DirtRoom + "Data/Cam2.jpg"
+Cam1Res = DirtRoom + "Data/Cam1.txt"
+Cam2Res = DirtRoom + "Data/Cam2.txt"
+windowName = 'Result'
 # Rofl = MyDirectory + "Dungeon.jpg"
 # ResultPict, windowName = Rofl, Rofl[Rofl.rfind('/') + 1:Rofl.rfind('.')]
 
-Dcam = 120
-rcam = 0.02
-focus = 100000
-probability = 38
 if __name__ == "__main__":
     width = int(DoublePict.shape[1])
     height = int(DoublePict.shape[0])
@@ -36,9 +47,8 @@ if __name__ == "__main__":
     cv2.imwrite(Cam1Pict, Cam1)
     cv2.imwrite(Cam2Pict, Cam2)
 
-    subprocess.call("C:/Project/Stereopair/Darknet.sh", shell=True)
-
-    ipt, ndel, nmap, v = [], [], [], []
+    subprocess.call(DirtRoom + "darknet.sh", shell=True)
+    ipt, ndel, nmap, v, t = [], [], [], [], 0
     for op in [1, 2]:
         if op == 1:
             fin = open(Cam1Res, "r")
@@ -81,7 +91,7 @@ if __name__ == "__main__":
         p = (int)(line[line.rfind(" "):])
         line = line[:line.rfind(" ")]
         name = line
-        if p > probability:
+        if p > Accuracy:
             v.append([name, p, x, y, w, h])
 
     dl = len(v)
@@ -89,7 +99,6 @@ if __name__ == "__main__":
         for j in range(dl - i - 1):
             if v[j] > v[j+1]:
                 v[j], v[j+1] = v[j+1], v[j]
-    t = 0
     while t < dl:
         tl = 0
         while (t + tl) < dl and v[t][0] == v[t + tl][0]:
@@ -97,8 +106,7 @@ if __name__ == "__main__":
         t = t + tl
         nmap.append(tl)
 
-    i1 = 0
-    i2 = 0
+    i1, i2 = 0, 0
     for tmp in nmap:
         i2 = i2 + tmp
         for i in range(i1, i2):
@@ -107,16 +115,16 @@ if __name__ == "__main__":
                     v[j], v[j + 1] = v[j + 1], v[j]
         i1 = i2
 
-    tmp1, tmp2, pazniza = 0, 0, 15
+    tmp1, tmp2, DiffComp = 0, 0, 15
     for i in range(0, len(v)):
         tf = 1
         if i < len(v) - 1:
             tmp1 = v[i][2] - v[i + 1][2]
-            if tmp1 < pazniza and tmp1 > -1 * pazniza:
+            if tmp1 < DiffComp and tmp1 > -1 * DiffComp:
                 tf = 0
         if i > 0:
             tmp2 = v[i][2] - v[i - 1][2]
-            if tmp2 < pazniza and tmp2 > -1 * pazniza:
+            if tmp2 < DiffComp and tmp2 > -1 * DiffComp:
                 tf = 0
         if tf == 1:
             ndel.append(i)
@@ -126,15 +134,17 @@ if __name__ == "__main__":
         v.pop(tmp)
 
     for i in range(0, len(v)):
-        print(v[i][0], " ", v[i][1], " ", v[i][2], " ", v[i][3], " ", v[i][4], " ", v[i][5])
+        # print(v[i][0], " ", v[i][1], " ", v[i][2], " ", v[i][3], " ", v[i][4], " ", v[i][5])
         pass
-    # Build depth map start
-    Dcam = Dcam / 360 * math.pi
+
+    # Start building a space map
 
     Red = (89, 16, 222)
-    Green = (0, 255, 0)
+    Green = (0, 179, 44)
     Blue = (222, 131, 49)
+    Yellow = (0, 211, 255)
     White = (255, 255, 255)
+    Salmon = (140, 105, 255)
     Black = (0, 0, 0)
 
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -144,91 +154,105 @@ if __name__ == "__main__":
     fontType = 2
     LineType = 3
     cv2.namedWindow(windowName)
+
     img = WhiteRect
     width = int(Cam1.shape[1])
     height = int(Cam1.shape[0])
-    print("Input Picture\n  width: ", width, "height: ", height, '\n')
+    # print("\nInput Picture\n  width: ", width, "height: ", height, '\n')
 
     polew, poleh = 36, 36
+    axisColor = Black
+
     img = cv2.resize(img, (width + polew, height + poleh), interpolation=cv2.INTER_AREA)
     cv2.rectangle(img, (0, 0), (width + polew, height + poleh), White, -1)
     cv2.rectangle(img, (polew, 0), (polew + width - 2, height), Red, 4)
 
-    cv2.line(img, (polew, 0), ((int)(polew / 2), (int)(polew / 2)), Black, 3)
-    cv2.line(img, (polew, 0), ((int)(polew / 2 + polew), (int)(polew / 2)), Black, 3)
-    cv2.line(img, (polew, 0), (polew, height), Black, 3)
+    cv2.line(img, (polew, 0), ((int)(polew / 2), (int)(polew / 2)), axisColor, 3)
+    cv2.line(img, (polew, 0), ((int)(polew / 2 + polew), (int)(polew / 2)), axisColor, 3)
+    cv2.line(img, (polew, 0), (polew, height), axisColor, 3)
 
-    cv2.line(img, (polew + width, height), (width + (int)(polew / 2), height - (int)(poleh / 2)), Black, 3)
-    cv2.line(img, (polew + width, height), (width + (int)(polew / 2), height + (int)(poleh / 2)), Black, 3)
-    cv2.line(img, (polew, height), (polew + width, height), Black, 3)
+    cv2.line(img, (polew + width, height), (width + (int)(polew / 2), height - (int)(poleh / 2)), axisColor, 3)
+    cv2.line(img, (polew + width, height), (width + (int)(polew / 2), height + (int)(poleh / 2)), axisColor, 3)
+    cv2.line(img, (polew, height), (polew + width, height), axisColor, 3)
 
     cv2.putText(img, '(0,0)', (7, height + (int)(poleh / 2 - 1)), font, fontScale, Black, 2)
 
-    strt = 50
-    for i in range(strt, height, strt):
+    AxisDivision = 50
+    ArrowOfDeath = 0
+    for i in range(AxisDivision, height, AxisDivision):
         if i > height - 30:
             break
         cv2.line(img, (polew - 6, height - i), (polew + 6, height - i), Black, 2)
         cv2.putText(img, (str)(i / 100), (0, height - i - 5), font, fontScale, Black, 2)
 
-    for i in range(strt, width, strt):
+    for i in range(AxisDivision, width, AxisDivision):
         if i > width - 30:
             break
+        ArrowOfDeath = ArrowOfDeath + 0.25
         cv2.line(img, (polew + i, height + 6), (polew + i, height - 6), Black, 2)
-        cv2.putText(img, (str)(i), (i + polew, (int)(height + poleh / 2)), font, fontScale, Black, 2)
+        # cv2.putText(img, (str)(ArrowOfDeath), (i + polew - 15, (int)(height + poleh / 2)), font, fontScale, Black, 2)
 
+    ObjWColor, i3, LineDown, ArrowHeight = Yellow, 0, 2, 4
+    TxTQue1, TxTQue2, TxTQue3 = [], [], []
     for i in range(0, len(v), 2):
-        # Line
         x1 = v[i][2] + v[i][4] / 2
         x2 = v[i + 1][2] + v[i + 1][4] / 2
-        dx12 = abs(x1 - x2)
-        if dx12 == 0:
-            dx12 = 1
-        m = (int)((focus * rcam) / dx12)
+        x1x2 = abs(x2 - x1)
+        if x1x2 == 0:
+            x1x2 = 1
+        DistObj = LenTmp / x1x2
+        DistObj = (int)(DistObj * ScaleLen)
 
-        first = (int)((v[i][2] + v[i + 1][2]) / 2)
-        second =(int)((v[i][2] + v[i + 1][2] + v[i][4] + v[i + 1][4]) / 2)
+        first = (int)((v[i][2] + v[i + 1][2]) / 2) + polew
+        second = (int)((v[i][2] + v[i + 1][2] + v[i][4] + v[i + 1][4]) / 2) + polew
 
-        Dheight = height - int(m)
-        LeftLineCorner = (int(first) + polew, Dheight)
-        RightLineCorner = (int(second) + polew, Dheight)
-        cv2.line(img, LeftLineCorner, RightLineCorner, LineColor, LineType)
+        ObjWidth = (2 * abs(first - second)) / PxHor * math.tan(CamAngle / 2)
+        ObjWidth = (int)(ObjWidth * 1000) / 100
+        # print(v[i][0], ObjWidth, 'meters')
 
-    for i in range(0, len(v), 2):
-        # Text
-        name = v[i][0] + " " + (str)((v[i][1]+v[i+1][1])/2)+ "% "
-        x1 = v[i][2] + v[i][4] / 2
-        x2 = v[i + 1][2] + v[i + 1][4] / 2
-        dx12 = abs(x1 - x2)
-        if dx12 == 0:
-            dx12 = 1
-        m = (int)((focus * rcam) / dx12)
-        first = (int)((v[i][2] + v[i + 1][2]) / 2)
+        Dheight = height - DistObj
+        TopTrianglePos = ((first + second) // 2, Dheight - 100 + abs(first - second)//3)
 
-        Dheight = height - int(m)
-        StartCornerOfText = (int(first) + polew, Dheight - 5)
-        cv2.putText(img, str(name), StartCornerOfText, font, fontScale, fontColor, fontType)
+        cv2.line(img, (first, Dheight), (second, Dheight), LineColor, LineType)
+        cv2.line(img, (first, Dheight), TopTrianglePos, LineColor, LineType)
+        cv2.line(img, (second, Dheight), TopTrianglePos, LineColor, LineType)
 
-    ColorOfArrow = Red
-    cv2.putText(img, 'y(m)', (0, 20), 2, 1, ColorOfArrow, 2)
-    cv2.putText(img, 'x(p)', (width - polew, poleh + height - 3), 2, 1, ColorOfArrow, 2)
+        cv2.line(img, (first, Dheight + LineDown), (first + ArrowHeight, Dheight + LineDown - ArrowHeight), ObjWColor,2)
+        cv2.line(img, (first, Dheight + LineDown), (first + ArrowHeight, Dheight + LineDown + ArrowHeight),  ObjWColor,2)
+
+        cv2.line(img, (second, Dheight + LineDown), (second - ArrowHeight, Dheight + LineDown + ArrowHeight), ObjWColor,2)
+        cv2.line(img, (second, Dheight + LineDown), (second - ArrowHeight, Dheight + LineDown - ArrowHeight), ObjWColor,2)
+        cv2.line(img, (first, Dheight + LineDown), (second, Dheight + LineDown), ObjWColor, 2)
+
+        TxTQue1.append(str(name + " " + str(ObjWidth) + "m"))
+        TxTQue2.append(first)
+        TxTQue3.append(height - DistObj + 10)
+        # cv2.putText(img, str(name + " " + str(ObjWidth) + "m"), (first, height - DistObj + 10), font, fontScale, fontColor, fontType)
+
+    for i in range(0, len(TxTQue1)):
+        cv2.putText(img, TxTQue1[i], ((int)(TxTQue2[i]), (int)(TxTQue3[i])), font, fontScale, fontColor, fontType)
+        pass
+
+    ColorOfArrow = Salmon
+    cv2.putText(img, 'y(m)', (0, 22), 2, 1, ColorOfArrow, 2)
+    cv2.putText(img, 'x(m)', (width - polew - 4, poleh + height-10), 2, 1, ColorOfArrow, 2)
 
     while (True):
         cv2.imshow(windowName, img)
         a = cv2.waitKey(0)
         if a == ord('a'):
-            print("Pressed A --> Saved --> Break")
+            print("\nPressed A --> Saved --> Break")
             cv2.imwrite(ResultPict, img)
             cv2.destroyAllWindows()
             break
 
         if a == ord('q'):
-            print("Pressed Q --> Break")
+            print("\nPressed Q --> Break")
             cv2.destroyAllWindows()
             break
 
         if a == ord('z'):
-            print("Pressed Z --> Clear")
+            print("\nPressed Z --> Clear")
             cv2.rectangle(img, (0, 0), (width + polew + 10, height + poleh + 10), White, -1)
 
     cv2.imwrite("Results.jpg", img)
